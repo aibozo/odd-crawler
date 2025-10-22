@@ -1,0 +1,30 @@
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.coverage
+.coverage*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local data
+var/
+logs/
+*.log
+
+# Editor junk
+.DS_Store
+.idea/
+.vscode/
+
+# Test outputs
+.coverage
+pytest_cache/
+
+# Env files
+.env
+

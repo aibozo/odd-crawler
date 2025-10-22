@@ -1,0 +1,12 @@
+[project]
+name = "oddcrawler"
+version = "0.0.1"
+description = "Oddcrawler – a strange‑web cartographer"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Oddcrawler Team"}]
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]

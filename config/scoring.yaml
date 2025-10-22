@@ -1,0 +1,25 @@
+# Oddcrawler scoring configuration
+version: 1
+
+weights:
+  retro_html: 0.25
+  url_weird: 0.10
+  semantic: 0.30
+  anomaly: 0.20
+  graph: 0.15
+  bias: 0.0
+
+thresholds:
+  persist: 0.35
+  llm_gate: 0.60
+  alert: 0.80
+
+calibration:
+  validation_window_days: 30
+  max_llm_delta_percent: 10
+  drift_sigma_alert: 2.0
+
+models:
+  embedding: "sentence-transformers/all-MiniLM-L12-v2"
+  anomaly: "isolation-forest/default"
+  graph: "umap-hdbscan/default"

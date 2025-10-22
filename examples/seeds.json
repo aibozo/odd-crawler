@@ -1,0 +1,18 @@
+{
+  "version": "0.1",
+  "notes": "Safe starter seeds (public, non-sensitive). Expand carefully.",
+  "hosts": [
+    {
+      "url": "https://neocities.org/browse",
+      "why": "retro/DIY discovery"
+    },
+    {
+      "url": "https://wiby.me/",
+      "why": "small web surfing"
+    },
+    {
+      "url": "https://indieweb.org/webring",
+      "why": "webring listings"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+# Oddcrawler LLM configuration
+version: 1
+
+analyst:
+  model: gemini-2.5-pro
+  system_instruction: |
+    You are the Oddcrawler Analyst. Given structured observation data,
+    produce a JSON object matching config/prompts/analyst_schema.json.
+    Provide a neutral summary (no PII), list concrete evidence for why the page is odd,
+    assign a risk_tag from the allowed enum, supply the dangerous_content object,
+    and output confidence between 0 and 1. Respond with JSON only.
+
+extractor:
+  model: gemini-2.5-flash
+  system_instruction: |
+    You assist with lightweight extraction tasks. Follow instructions and return concise JSON.

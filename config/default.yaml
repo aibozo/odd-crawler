@@ -1,0 +1,98 @@
+# Oddcrawler default configuration
+# Copy to a new file and override as needed. Values here are conservative.
+
+app:
+  name: oddcrawler
+  environment: dev
+
+seeds:
+  # The agent should use docs/research-seeds.md to extend these.
+  file: examples/seeds.json
+
+crawl:
+  obey_robots_txt: true
+  user_agent: "OddcrawlerBot/0.1 (+contact: you@example.com)"
+  max_concurrent_requests_per_domain: 1
+  global_requests_per_minute: 30
+  per_host_requests_per_minute: 6
+  download_timeout_seconds: 20
+  retries: 1
+  request_jitter_ms: [200, 1200]  # min/max
+  error_backoff_seconds: [2, 10]
+  allow_tor_connector: false  # set true only with allowlists (see docs/tor-connector.md)
+  allowed_schemes: ["http", "https"]
+  tor:
+    enabled: false
+    socks_host: "127.0.0.1"
+    socks_port: 9050
+    control_port: 9051
+    control_password: null
+    per_host_requests_per_minute: 3
+    global_requests_per_minute: 30
+    failure_block_minutes: 30
+    max_failures_per_host: 3
+    illegal_block_days: 365
+    blocklist_path: "var/oddcrawler/tor/blocklist.json"
+    route_domains: []
+    route_onion_only: true
+
+dedupe:
+  bloom_filter_capacity: 2000000
+  bloom_filter_error_rate: 0.001
+  use_simhash: true
+  simhash_threshold: 5
+  use_minhash: false  # enable later if needed
+  revisit_ttl_days: 14
+
+extract:
+  render_js: false           # keep off for MVP; enable selectively later
+  extract_comments: true
+  max_text_chars: 100000
+
+scoring:
+  retro_html_weight: 0.25
+  url_weird_args_weight: 0.10
+  semantic_similarity_weight: 0.30
+  anomaly_weight: 0.20
+  graph_neighborhood_weight: 0.15
+  bias: 0.0
+  # Gates
+  llm_gate_threshold: 0.60
+  persist_threshold: 0.35
+  alert_threshold: 0.80
+
+llm:
+  provider_router: "generic"   # leave to the agent (e.g., LiteLLM or provider SDK)
+  model_first_pass: "small"
+  model_escalation: "pro"
+  max_daily_cost_usd: 5.00
+  rpm_cap: 30
+  structured_output: true
+
+retention:
+  keep_raw_html_days: 30
+  keep_screenshots_days: 30
+  keep_text_forever: true
+  purge_images_by_default: true   # images often have PII; keep off unless needed
+
+safety:
+  minor_safety_filter: true
+  blocklists_enabled: true
+  dangerous_content_marking: true
+  redact_pii: true
+  store_only_excerpts: true
+  illegal_content:
+    keywords:
+      - "child sexual abuse"
+      - "csam"
+      - "exploitative imagery"
+      - "illegal firearms marketplace"
+      - "human trafficking for sale"
+    min_keyword_matches: 1
+
+reports:
+  weekly_digest_enabled: true
+  top_n_per_week: 25
+
+run_loop:
+  failure_cache_seconds: 604800  # 7 days

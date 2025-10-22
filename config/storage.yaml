@@ -1,0 +1,40 @@
+# Oddcrawler storage and retention configuration
+version: 1
+base_dir: "var/oddcrawler"
+
+raw_html:
+  enabled: false          # enable only when whitelisted; see docs/data-governance.md
+  path: "raw_html"
+  ttl_days: 30
+  mime_allowlist:
+    - text/html
+    - application/xhtml+xml
+
+excerpts:
+  enabled: true
+  path: "excerpts"
+  max_chars: 5000
+  ttl_days: null          # retain excerpts long term unless policy changes
+
+vectors:
+  enabled: true
+  path: "vectors"
+  backend: "faiss"
+  ttl_days: null
+
+graphs:
+  enabled: true
+  path: "graphs"
+  backend: "networkx"
+  ttl_days: null
+
+dangerous_breadcrumbs:
+  enabled: true
+  path: "dangerous_breadcrumbs"
+  max_excerpt_chars: 200
+  sink: "local"
+  ttl_days: null
+
+salt_rotation:
+  active_version: "2025Q1"
+  rotation_cadence_days: 90

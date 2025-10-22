@@ -1,0 +1,9 @@
+# Copy to config/local.yaml and override per environment
+include: config/default.yaml
+crawl:
+  user_agent: "OddcrawlerBot/0.1 (+contact: you@example.com)"
+  global_requests_per_minute: 20
+  max_concurrent_requests_per_domain: 1
+scoring:
+  llm_gate_threshold: 0.74
+  alert_threshold: 0.88
