@@ -80,12 +80,15 @@ src/oddcrawler/
 - Safety & Governance → **docs/data-governance.md**, **docs/compliance.md**
 - Prompts & Schemas → **docs/llm-prompts.md**
 - Observability → **docs/observability.md**
+- Telemetry Dashboard roadmap → **docs/dashboard.md**
 - Big codemap → **docs/codemap.md**
 
 ## Helpful scripts
 - `.venv/bin/python scripts/run_pipeline.py [--run-dir var/runs/<name>]` — long-running crawl with on-disk checkpoints, metrics, and telemetry.
+- `.venv/bin/python scripts/update_blocklist.py --source var/oddcrawler/safety/urlhaus.txt --output config/safety/blocklist_hosts.txt` — rebuild the malware host blocklist (documented in `docs/data-governance.md`).
 - `.venv/bin/python scripts/export_clusters.py <embedding_artifact_dir> clusters.csv` — generate UMAP/HDBSCAN layouts from saved embeddings.
 - `.venv/bin/python scripts/topic_summary.py <documents.jsonl> topics.json` — produce BERTopic summaries for interpretability.
+- `.venv/bin/python scripts/dashboard_api.py` — run the local telemetry API (set `dashboard.blocklist.auto_refresh` in config to keep the URLhaus blocklist fresh while the UI is open).
 - Link graph artifacts live at `var/oddcrawler/graphs/link_graph.json`; instantiate `oddcrawler.agents.reporter.Reporter` inside the venv to surface graph neighborhoods and topic drift summaries for briefs.
 - Tor connector is optional: see `docs/tor-connector.md` for enabling via config and managing the blocklist (`var/oddcrawler/tor/blocklist.json`). Illegal-content hits auto-block hosts and skip storage, so review that list before re-enabling.
 - Each run directory contains `telemetry.jsonl` (page events), `metrics.json`, `reports/summary.json`, and `state/frontier.json`/`state/failures.json` for crash-safe resumes and cached 404s (failure entries expire after ~7 days).

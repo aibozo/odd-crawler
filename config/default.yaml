@@ -21,6 +21,10 @@ crawl:
   error_backoff_seconds: [2, 10]
   allow_tor_connector: false  # set true only with allowlists (see docs/tor-connector.md)
   allowed_schemes: ["http", "https"]
+  blocklist_hosts_path: "config/safety/blocklist_hosts.txt"
+  blocklist_refresh_seconds: 900
+  allow_insecure_tls: false
+  allow_insecure_hosts: []
   tor:
     enabled: false
     socks_host: "127.0.0.1"
@@ -66,6 +70,7 @@ llm:
   model_first_pass: "small"
   model_escalation: "pro"
   max_daily_cost_usd: 5.00
+  max_hourly_cost_usd: 10.00
   rpm_cap: 30
   structured_output: true
 
@@ -96,3 +101,10 @@ reports:
 
 run_loop:
   failure_cache_seconds: 604800  # 7 days
+
+dashboard:
+  blocklist:
+    auto_refresh: false
+    refresh_seconds: 21600
+    max_hosts: 2000
+    source_url: "https://urlhaus.abuse.ch/downloads/text/"

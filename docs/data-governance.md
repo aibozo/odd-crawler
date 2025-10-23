@@ -12,6 +12,11 @@
 - **`agents/triage.py`**: decides whether a page is stored as full observation, excerpt-only, or dropped; ensures compliance metadata (pseudonym salt version, redaction flags) is attached.
 - **`storage/compliance.py`**: records `dangerous_breadcrumb` entries with hashed URL, category, timestamp, and redacted 200-char excerpt.
 - Configuration switches live under `/config/storage.yaml`; any change must update TTL or retention notes here and in the changelog.
+- Malware/abuse blocklists live in `config/safety/`. The crawler enforces `blocklist_hosts.txt` before fetching, logs every skip, resolves the actual peer IP, and surfaces per-host/IP counts in telemetry even if DNS is poisoned mid-flight.
+- `crawl.blocklist_refresh_seconds` controls how frequently the fetcher reloads `blocklist_hosts.txt` at runtime so scheduler jobs can update the list without restarting the crawl.
+- `dashboard.blocklist.*` governs the telemetry service refresh cadence (auto-refresh toggle, interval, max hosts, and source URL) so operators can keep URLhaus data fresh while monitoring runs.
+- Hosts explicitly allowlisted for insecure TLS fetches are still recorded, but the fetcher marks the response as `transport="insecure_text_only"` and skips raw HTML persistence so only redacted excerpts ever persist.
+- Storage paths derived from that config resolve relative to the repo root by default (`var/oddcrawler/...`) so governance reviews can locate persisted artifacts quickly.
 
 ## Pseudonymization (tracked & stable)
 - Compute `pseudonym = BASE32(HMAC_SHA256(secret_salt, identifier))[:12]`.
