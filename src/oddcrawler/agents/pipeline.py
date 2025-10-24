@@ -19,6 +19,10 @@ class FetchResult:
     fetched_at: str
     headers: Mapping[str, Any]
     body: bytes
+    status: Optional[int] = None
+    duration_ms: Optional[float] = None
+    bytes_downloaded: Optional[int] = None
+    via_tor: bool = False
 
 
 class OddcrawlerPipeline:

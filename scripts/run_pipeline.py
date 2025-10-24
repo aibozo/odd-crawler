@@ -16,7 +16,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from oddcrawler.config import load_app_config
-from oddcrawler.crawler.frontier import Frontier
+from oddcrawler.crawler.frontier import Frontier, FrontierSettings
 from oddcrawler.runtime import RunLoop
 from oddcrawler.runner import OddcrawlerRunner
 
@@ -85,12 +85,17 @@ def main() -> None:
         seeds_path = seeds_file
     seeds = [url for url in load_seed_urls(seeds_path) if url]
 
+    crawl_cfg = config.get("crawl", {}) if isinstance(config, dict) else {}
+    frontier_cfg = config.get("frontier", {}) if isinstance(config, dict) else {}
+    frontier_settings = FrontierSettings.from_config(frontier_cfg, crawl=crawl_cfg)
+
     frontier_state_path = run_dir / "state" / "frontier.json"
     if frontier_state_path.exists():
-        frontier = Frontier.load(frontier_state_path)
+        frontier = Frontier.load(frontier_state_path, settings=frontier_settings)
+        frontier.settings = frontier_settings
         resumed = True
     else:
-        frontier = Frontier()
+        frontier = Frontier(settings=frontier_settings)
         resumed = False
 
     runner = OddcrawlerRunner(config=config, frontier=frontier)

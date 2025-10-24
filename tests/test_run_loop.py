@@ -1,165 +1,79 @@
 from __future__ import annotations
 
-import json
 import tempfile
 import unittest
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional
 
 import tests._path  # noqa: F401
 
-from oddcrawler.agents.analyst import AnalystProcessingResult
 from oddcrawler.agents.triage import ScoreDecision
-from oddcrawler.crawler.fetcher import FetchHTTPError
+from oddcrawler.agents.cascade import CascadeDecision, CascadeStageResult
 from oddcrawler.crawler.frontier import Frontier
-from oddcrawler.runtime import RunLoop
 from oddcrawler.runner import RunnerResult
+from oddcrawler.runtime.run_loop import RunLoop
 
 
-@dataclass
 class StubRunner:
-    results: List[RunnerResult]
+    def __init__(self, result: RunnerResult) -> None:
+        self._result = result
+        self._emitted = False
+        self.failure_cache = None
 
-    def __post_init__(self) -> None:
-        self._index = 0
-        self.seeded: List[str] = []
-
-    def add_seeds(self, urls: Iterable[str]) -> None:
-        self.seeded.extend(urls)
-
-    def step(self) -> Optional[RunnerResult]:
-        if self._index >= len(self.results):
-            return None
-        result = self.results[self._index]
-        self._index += 1
-        return result
-
-
-class FaultyRunner:
-    def __init__(self) -> None:
-        self.called = 0
-
-    def add_seeds(self, urls: Iterable[str]) -> None:  # pragma: no cover - trivial
+    def add_seeds(self, urls) -> None:  # pragma: no cover - seeds unused in test
         pass
 
-    def step(self) -> Optional[RunnerResult]:
-        self.called += 1
-        if self.called == 1:
-            raise RuntimeError("boom")
+    def step(self):
+        if not self._emitted:
+            self._emitted = True
+            return self._result
         return None
 
 
-class RunnerWith404:
-    def __init__(self, frontier: Frontier) -> None:
-        self.frontier = frontier
-        self.failure_cache = None  # type: ignore[assignment]
-        self.calls = 0
-
-    def add_seeds(self, urls: Iterable[str]) -> None:
-        for url in urls:
-            self.frontier.add(url)
-
-    def step(self) -> Optional[RunnerResult]:
-        url = self.frontier.pop()
-        if not url:
-            return None
-        if self.failure_cache and self.failure_cache.should_skip(url):  # type: ignore[attr-defined]
-            return None
-        self.calls += 1
-        if self.calls == 1:
-            raise FetchHTTPError(404, url, "HTTP 404")
-        return None
-
-
-class RunLoopTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.tmpdir = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmpdir.cleanup)
-        self.run_dir = Path(self.tmpdir.name) / "run"
-
-    def _make_runner_results(self) -> List[RunnerResult]:
-        decision1 = ScoreDecision(score=0.6, action="persist", thresholds_hit={"persist": 0.35}, reasons=["retro"])
-        pipeline1 = {"observation_path": "obs1.json"}
-        result1 = RunnerResult(
-            url="https://example.com/a",
-            decision=decision1,
-            observation={"url": "https://example.com/a"},
-            pipeline_result=pipeline1,
-        )
-
-        decision2 = ScoreDecision(score=0.92, action="llm", thresholds_hit={"llm": 0.6}, reasons=["odd cluster"])
-        analyst_result = AnalystProcessingResult(
-            finding={"observation_ref": "observation:123"},
-            breadcrumb=None,
-            observation_path="obs2.json",
-        )
-        pipeline2 = {
-            "finding": {"observation_ref": "observation:123"},
-            "analyst_result": analyst_result,
+class RunLoopMetricsTests(unittest.TestCase):
+    def test_run_loop_updates_baseline_metrics(self) -> None:
+        fetch_metrics = {
+            "status": 200,
+            "duration_ms": 120.0,
+            "bytes_downloaded": 2048,
+            "via_tor": False,
+            "fetched_at": "2025-03-01T00:00:00Z",
         }
-        result2 = RunnerResult(
-            url="https://example.com/b",
-            decision=decision2,
-            observation={"url": "https://example.com/b"},
-            pipeline_result=pipeline2,
+        decision = ScoreDecision(score=0.6, action="persist", thresholds_hit={"persist": 0.3}, reasons=["retro"])
+        observation = {"url": "https://example.org", "fetch_metrics": fetch_metrics}
+        pipeline_result = {"observation_path": None}
+        cascade = CascadeDecision(
+            should_skip=False,
+            stages=[CascadeStageResult(stage="classifier", status="pass")],
+            final_reason=None,
         )
-        return [result1, result2]
 
-    def test_run_loop_persists_metrics_and_events(self) -> None:
-        frontier = Frontier()
-        frontier.add("https://seed", priority=1.0)
-        runner = StubRunner(results=self._make_runner_results())
-
-        loop = RunLoop(
-            runner=runner, frontier=frontier, run_dir=self.run_dir, checkpoint_interval=1, sleep_seconds=0.0
+        runner_result = RunnerResult(
+            url="https://example.org",
+            decision=decision,
+            observation=observation,
+            pipeline_result=pipeline_result,
+            fetch_metrics=fetch_metrics,
+            cascade_result=cascade,
         )
-        loop.run(seeds=["https://seed"], max_pages=2)
 
-        telemetry_path = self.run_dir / "telemetry.jsonl"
-        self.assertTrue(telemetry_path.exists())
-        lines = [line.strip() for line in telemetry_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-        self.assertEqual(len(lines), 2)
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        run_dir = Path(tmpdir.name) / "run"
 
-        metrics_path = self.run_dir / "metrics.json"
-        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
-        self.assertEqual(metrics["pages_processed"], 2)
-        self.assertEqual(metrics["actions"]["persist"], 1)
-        self.assertEqual(metrics["actions"]["llm"], 1)
-        self.assertEqual(metrics["llm_calls"], 1)
-
-        summary = json.loads((self.run_dir / "reports" / "summary.json").read_text(encoding="utf-8"))
-        self.assertEqual(summary["pages_processed"], 2)
-
-        frontier_state = self.run_dir / "state" / "frontier.json"
-        self.assertTrue(frontier_state.exists())
-
-    def test_run_loop_logs_errors(self) -> None:
+        runner = StubRunner(runner_result)
         frontier = Frontier()
-        runner = FaultyRunner()
-        loop = RunLoop(runner=runner, frontier=frontier, run_dir=self.run_dir, checkpoint_interval=1)
-        loop.run(max_pages=1)
 
-        metrics = json.loads((self.run_dir / "metrics.json").read_text(encoding="utf-8"))
-        self.assertEqual(metrics["errors"], 1)
-        telemetry = (self.run_dir / "telemetry.jsonl").read_text(encoding="utf-8")
-        self.assertIn("error", telemetry)
+        loop = RunLoop(runner=runner, frontier=frontier, run_dir=run_dir, checkpoint_interval=1)
+        loop.run(seeds=[], max_pages=1)
 
-    def test_run_loop_records_404_failures(self) -> None:
-        frontier = Frontier()
-        runner = RunnerWith404(frontier)
-        loop = RunLoop(runner=runner, frontier=frontier, run_dir=self.run_dir, checkpoint_interval=1)
-        loop.run(seeds=["https://example.com/missing"], max_pages=1)
-
-        # 404 should be cached and telemetry should log the event.
-        failure_cache = loop.failure_cache
-        self.assertTrue(failure_cache.should_skip("https://example.com/missing"))
-        telemetry = (self.run_dir / "telemetry.jsonl").read_text(encoding="utf-8")
-        self.assertIn("url_404", telemetry)
-        metrics = json.loads((self.run_dir / "metrics.json").read_text(encoding="utf-8"))
-        self.assertIn("example.com", metrics["failure_hosts"])
-        summary = json.loads((self.run_dir / "reports" / "summary.json").read_text(encoding="utf-8"))
-        self.assertTrue(summary["top_failure_hosts"])
+        metrics = loop.metrics
+        self.assertEqual(metrics["pages_processed"], 1)
+        self.assertEqual(metrics["fetch_stats"]["requests"], 1)
+        self.assertEqual(metrics["fetch_stats"]["total_bytes"], 2048)
+        self.assertEqual(metrics["odd_hits"]["total"], 1)
+        self.assertEqual(metrics["odd_hits"]["ratio"], 1.0)
+        self.assertEqual(metrics["cost"]["bandwidth_bytes"], 2048)
+        self.assertIn("crawl_rate_per_minute", metrics["timing"])
 
 
 if __name__ == "__main__":

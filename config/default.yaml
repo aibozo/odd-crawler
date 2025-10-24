@@ -40,6 +40,62 @@ crawl:
     route_domains: []
     route_onion_only: true
 
+frontier:
+  weights:
+    host_budget: 0.35
+    novelty: 0.25
+    bandit: 0.25
+    oddity_prior: 0.15
+  depth_penalty: 0.05
+  novelty_decay: 6
+  min_priority: 0.05
+  max_priority: 1.0
+  cross_domain_bonus: 0.08
+  host_token_capacity: 2
+  host_refill_seconds: 5
+  host_penalty_seconds: 0.5
+  failure_cooldown_seconds: 60
+  bandit_initial: 0.6
+  bandit_exploration: 0.3
+  oddity_baseline: 0.5
+  cascade_skip_threshold: 0.8
+  cascade_penalty: 0.15
+  cascade_min_observations: 5
+
+triage:
+  cascade:
+    max_content_length: 2500000
+    min_content_length: 512
+    snippet_bytes: 8192
+    max_script_ratio: 0.55
+    max_anchor_ratio: 0.65
+    min_text_density: 0.02
+    classifier_threshold: 0.35
+    retro_override_score: 0.3
+    density_token_override: 40
+    density_anchor_override: 0.35
+    density_skip_token_cap: 15
+    odd_keywords:
+      - webring
+      - guestbook
+      - bbs
+      - forum
+      - tilde
+      - topsites
+    boring_keywords:
+      - insurance
+      - mortgage
+      - terms and conditions
+      - privacy policy
+    allowed_content_types:
+      - text/html
+      - application/xhtml+xml
+  prefilter:
+    enabled: true
+    heuristics:
+      min_token_count: 40
+      boring_keywords: "insurance, mortgage, real estate"
+
 dedupe:
   bloom_filter_capacity: 2000000
   bloom_filter_error_rate: 0.001

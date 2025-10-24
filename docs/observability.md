@@ -1,6 +1,7 @@
 # Observability & Cost Controls
 
 ## Metrics
+- Baseline (run artifact `metrics.json`): crawl_rate_per_minute/hour, average fetch duration, bandwidth bytes/MiB, odd_hit ratio, cascade gate throughput (passes/skips/warns + override counts), and LLM call totals (`timing`, `fetch_stats`, `cost`, `odd_hits`, `cascade` buckets).
 - Crawl: requests/sec, success rate, median/95p latency, robots-denied count.
 - Frontier: queue size, per-host budgets, exploration/exploitation fractions.
 - Extraction: text length, failure rate.
@@ -23,8 +24,8 @@
 
 ## Local telemetry snapshots
 - Use `scripts/run_pipeline.py` for long-lived runs. Each invocation persists:
-  - `telemetry.jsonl` — per-page events with scores, actions, and frontier depth.
-  - `metrics.json` — cumulative counters (actions, illegal skips, LLM calls, errors).
+  - `telemetry.jsonl` — per-page events with scores, actions, frontier depth, and fetch stats (duration ms, bytes, TOR flag).
+  - `metrics.json` — cumulative counters (actions, illegal skips, LLM calls, errors) plus baseline buckets (`timing`, `fetch_stats`, `cost`, `odd_hits`, `cascade`) for rate/cost/oddity recall tracking. Cascade metrics now include per-stage pass/skip/warn counts and override tallies (token, retro, anchor, keyword).
   - `reports/summary.json` — derived stats (average score, top reasons, queue size).
   - `state/frontier.json` — serialized queue to resume after crashes or planned pauses.
   - `state/failures.json` — cached hard failures (e.g., HTTP 404) to avoid re-crawling dead nodes; entries expire after 7 days by default.

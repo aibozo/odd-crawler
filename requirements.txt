@@ -20,6 +20,7 @@ networkx>=3.2.0
 datasketch>=1.6.5
 # Choose one vector store for MVP; start with FAISS CPU
 faiss-cpu>=1.8.0
+matplotlib>=3.10.0
 
 # Utilities
 pydantic>=2.7.0

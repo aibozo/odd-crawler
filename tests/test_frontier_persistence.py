@@ -6,12 +6,13 @@ from pathlib import Path
 
 import tests._path  # noqa: F401
 
-from oddcrawler.crawler.frontier import Frontier
+from oddcrawler.crawler.frontier import Frontier, FrontierSettings
 
 
 class FrontierPersistenceTests(unittest.TestCase):
     def test_frontier_save_and_load_roundtrip(self) -> None:
-        frontier = Frontier()
+        settings = FrontierSettings(host_refill_seconds=0.0, host_token_capacity=10.0, host_penalty_seconds=0.0)
+        frontier = Frontier(settings=settings)
         urls = [
             ("https://example.com/a", 0.5),
             ("https://example.com/b", 0.8),
@@ -25,7 +26,7 @@ class FrontierPersistenceTests(unittest.TestCase):
         state_path = Path(tmpdir.name) / "frontier.json"
         frontier.save(state_path)
 
-        loaded = Frontier.load(state_path)
+        loaded = Frontier.load(state_path, settings=settings)
         seen_urls = set()
         popped = []
         while True:
@@ -34,6 +35,7 @@ class FrontierPersistenceTests(unittest.TestCase):
                 break
             popped.append(url)
             seen_urls.add(url)
+            loaded.record_feedback(url, score=0.5, action="persist", cascade_skip=False)
 
         self.assertGreater(len(popped), 0)
         self.assertTrue(seen_urls.issubset({u for u, _ in urls}))
@@ -49,4 +51,3 @@ class FrontierPersistenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

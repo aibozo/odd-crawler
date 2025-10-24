@@ -5,9 +5,10 @@ It is designed to be slow, polite, reproducible, and cheap to run.
 
 ## Components
 - **Seeders**: files, curated lists, small‑web directories (see docs/research-seeds.md).
-- **Frontier**: priority queue with exploration/exploitation (novelty, host budgets, historical yield).
+- **Frontier**: priority queue with host token buckets and UCB bandit scoring (novelty, oddity priors, depth penalty).
 - **Fetcher**: HTTP client (polite, retry/jitter) with optional JS rendering (off by default).
 - **Tor connector**: optional Stem-managed SOCKS5 proxy with blocklist/backoff for onion domains.
+- **Cascade Gate**: staged HEAD/snippet/SimHash/classifier checks with density/keyword overrides that skip boring or templated pages before heavy extraction.
 - **Extractor**: trafilatura/readability adapters pull main text + metadata + comments.
 - **Feature builders**: cheap HTML/URL/temporal signals → embeddings → anomaly/graph signals.
 - **Scoring/Triage**: fuses features into a single *Oddness Score*; decides escalate/persist/skip.
@@ -42,6 +43,9 @@ Scoring/Triage -> {Persist, Escalate LLM, or Skip} -> Reporter
 - **Scoring → Triage**
   - Interface: `ScoreDecision` with `score`, `reasons`, `thresholds_hit`, and recommended `action {skip,persist,llm}`.
   - Guarantees: scoring surfaces the feature contributions used; thresholds sourced from config snapshots.
+- **Cascade → Scoring**
+  - Interface: `CascadeDecision` with per-stage breakdown (`head`, `structure`, `keywords`, `simhash`, `classifier`, `prefilter`).
+  - Guarantees: skip reasons recorded in telemetry; pass-through pages keep cascade fingerprints for auditing.
 - **Triage → Storage/Analyst**
   - Interface: orchestrates persistence of `observation`, optional `dangerous_breadcrumb`, and LLM escalation payloads.
   - Guarantees: failure to persist rolls back downstream actions; LLM calls invoked only when `action == llm`.
@@ -56,6 +60,8 @@ Scoring/Triage -> {Persist, Escalate LLM, or Skip} -> Reporter
 - **Novelty**: prefer new hosts and neighborhoods.
 - **Yield**: bump seeds that historically produced high oddness (multi-armed bandit).
 - **Politeness**: per-host caps, sleep windows, robots allow/deny.
+- **Scoring**: `score = w_host*budget + w_novelty*novelty + w_bandit*ucb(host) + w_oddity*prior - depth_penalty*depth (+ cross-domain bonus)`; hosts with recent 4xx/5xx enter cooldown before re-queue.
+- **Cascade**: early filters apply content-type/size guardrails, structural heuristics (with token/retro/keyword overrides), SimHash dedupe, and a cheap logistic model before embeddings; hosts that trigger a high cascade skip ratio get down-weighted in the frontier.
 
 ## Dedupe & revisits
 - **URL-level**: canonicalize, Bloom filter for “seen”.

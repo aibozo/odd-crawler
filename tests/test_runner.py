@@ -42,8 +42,10 @@ class StubFetcher:
             fetched_at="2025-03-01T00:00:00Z",
             headers={"content-type": "text/html"},
             body=self.body,
+            status=200,
+            duration_ms=25.0,
+            bytes_downloaded=len(self.body),
         )
-        result.status = 200  # type: ignore[attr-defined]
         return result
 
 
@@ -69,7 +71,12 @@ class RunnerTests(unittest.TestCase):
           <head><title>Retro</title></head>
           <body>
             <marquee>Welcome to my page</marquee>
-            <p>This page is odd.</p>
+            <p>This page is odd and contains enough descriptive text to clear the small token filter.
+               We discuss retro aesthetics, handcrafted layouts, guestbooks, and strange webrings.
+               The content keeps going with quirky anecdotes about early 2000s web forums and
+               personal shrines to forgotten fandoms.</p>
+            <p>There are more sentences here to ensure the cascade considers this a meaningful page
+               worth keeping for downstream scoring and storage despite being intentionally verbose.</p>
           </body>
         </html>
         """.encode("utf-8")
@@ -82,6 +89,9 @@ class RunnerTests(unittest.TestCase):
         result = results[0]
         self.assertGreaterEqual(result.decision.score, 0.5)
         self.assertIn(result.decision.action, {"persist", "llm"})
+        self.assertIsNotNone(result.cascade_result)
+        assert result.cascade_result is not None
+        self.assertFalse(result.cascade_result.should_skip)
 
         raw_dir = Path(self.runner.pipeline.triage.config["base_dir"]) / "raw" / "st"
         self.assertTrue(raw_dir.exists())
@@ -116,6 +126,7 @@ class RunnerTests(unittest.TestCase):
         document = """
         <html><body>
             This forum distributes child sexual abuse material illegally.
+            Additional words ensure the token counter is above the cascade minimum threshold.
         </body></html>
         """.encode("utf-8")
         runner = OddcrawlerRunner(
@@ -134,6 +145,7 @@ class RunnerTests(unittest.TestCase):
         result = results[0]
         self.assertTrue(result.pipeline_result.get("illegal"))
         self.assertEqual(result.decision.action, "skip")
+        self.assertIsNone(result.cascade_result)
         raw_dir = base_dir / "raw"
         self.assertFalse(raw_dir.exists())
 

@@ -95,18 +95,24 @@ class Fetcher:
                 }
                 if proxies:
                     request_kwargs["proxies"] = proxies
+                start = time.perf_counter()
                 response = self.session.get(url, **request_kwargs)
                 response.raise_for_status()
+                elapsed_ms = (time.perf_counter() - start) * 1000.0
                 fetched_at = datetime.now(timezone.utc).isoformat()
                 url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()
+                body = response.content
                 result = FetchResult(
                     url=url,
                     url_hash=url_hash,
                     fetched_at=fetched_at,
                     headers=dict(response.headers),
-                    body=response.content,
+                    body=body,
+                    status=response.status_code,
+                    duration_ms=elapsed_ms,
+                    bytes_downloaded=len(body),
+                    via_tor=using_tor,
                 )
-                result.status = response.status_code  # type: ignore[attr-defined]
                 self.last_request_at[host] = time.time()
                 if using_tor:
                     tor_connector.record_success(url)
